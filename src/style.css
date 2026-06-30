@@ -130,7 +130,10 @@ tbody td { padding: 5px 10px; vertical-align: middle; }
 .actions { white-space: nowrap; }
 .drag-col { width: 22px; text-align: center; color: var(--gold-muted); cursor: grab; }
 tbody tr.drag-over { background: #2a2000; }
-.reorder-hint { font-size: 0.72rem; }
+tbody tr.new-entry { background: #10180a; }
+tbody tr.new-entry:hover { background: #182410; }
+.reorder-hint { font-size: 0.72rem; max-width: 420px; line-height: 1.3; }
+.reorder-hint code { font-family: monospace; color: var(--blue); }
 
 /* ─── STATUS BAR ─── */
 .status-bar {

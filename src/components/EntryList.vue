@@ -11,7 +11,11 @@
           {{ cat.en }}
         </option>
       </select>
-      <span v-if="!reorderable" class="muted reorder-hint">Clear sort on "ID" to enable drag reordering</span>
+      <span v-if="!manualOrder || search || catFilter" class="muted reorder-hint">Clear sort/filter to enable drag reordering</span>
+      <span v-else class="muted reorder-hint">
+        Only newly uploaded entries (highlighted) can be reordered — existing entries keep a fixed
+        position because in-game <code>(~i~)</code> chat triggers reference it directly.
+      </span>
       <span class="count-label">{{ visible.length }} / {{ store.entries.length }} entries</span>
     </div>
 
@@ -32,15 +36,15 @@
           <tr
             v-for="(e, visIdx) in visible"
             :key="e.id"
-            :class="{ 'drag-over': dragOverId === e.id }"
-            :draggable="reorderable"
+            :class="{ 'drag-over': dragOverId === e.id, 'new-entry': isNew(e) }"
+            :draggable="reorderable && isNew(e)"
             @dragstart="onDragStart(e)"
             @dragover="onDragOver($event, e)"
             @dragleave="onDragLeave(e)"
             @drop="onDrop($event, e)"
             @dragend="onDragEnd"
           >
-            <td v-if="reorderable" class="drag-col" title="Drag to reorder">⠿</td>
+            <td v-if="reorderable" class="drag-col" :title="isNew(e) ? 'Drag to reorder' : 'Fixed position — referenced by (~i~) chat triggers'">{{ isNew(e) ? '⠿' : '🔒' }}</td>
             <td class="id-col">{{ e.id }}</td>
             <td>{{ e.msg }}</td>
             <td class="file-col">{{ e.file }}</td>
@@ -123,15 +127,26 @@ const reorderable = computed(() =>
   manualOrder.value && !search.value && !catFilter.value
 );
 
+// WoWQuote2's chat trigger "(~i~)" addresses entries by their array index, not
+// their id (see WQ_GetMedia/WQ_Play in WoWQuote2.lua). Moving an *existing*
+// entry would change that index for anyone still on an older Media.lua, making
+// old triggers play the wrong sound. Only entries whose MP3 was uploaded in
+// this session (i.e. never distributed under their current index) may move,
+// and only among themselves, so existing indices stay fixed.
+function isNew(entry) {
+  return !!store.mp3Blobs[entry.file];
+}
+
 let dragEntry = null;
 const dragOverId = ref(null);
 
 function onDragStart(entry) {
+  if (!isNew(entry)) return;
   dragEntry = entry;
 }
 
 function onDragOver(event, entry) {
-  if (!reorderable.value || !dragEntry) return;
+  if (!reorderable.value || !dragEntry || !isNew(entry)) return;
   event.preventDefault();
   dragOverId.value = entry.id;
 }
@@ -143,7 +158,7 @@ function onDragLeave(entry) {
 function onDrop(event, targetEntry) {
   event.preventDefault();
   dragOverId.value = null;
-  if (!reorderable.value || !dragEntry || dragEntry === targetEntry) return;
+  if (!reorderable.value || !dragEntry || !isNew(targetEntry) || dragEntry === targetEntry) return;
   const from = store.entries.indexOf(dragEntry);
   const to = store.entries.indexOf(targetEntry);
   if (from === -1 || to === -1) return;
