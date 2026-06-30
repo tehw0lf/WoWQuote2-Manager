@@ -128,6 +128,9 @@ tbody td { padding: 5px 10px; vertical-align: middle; }
 .len-col { text-align: right; color: var(--gold-muted); }
 .cat-col { color: #8a6a30; }
 .actions { white-space: nowrap; }
+.drag-col { width: 22px; text-align: center; color: var(--gold-muted); cursor: grab; }
+tbody tr.drag-over { background: #2a2000; }
+.reorder-hint { font-size: 0.72rem; }
 
 /* ─── STATUS BAR ─── */
 .status-bar {
@@ -163,6 +166,7 @@ tbody td { padding: 5px 10px; vertical-align: middle; }
 .btn.danger:hover { background: #2a0a0a; }
 .btn.small { padding: 2px 7px; font-size: 0.75rem; }
 .btn:disabled { border-color: #2a2a2a; color: #3a3a3a; background: transparent; cursor: default; }
+.btn.playing { background: var(--gold-dim); color: #1a1500; border-color: var(--gold); }
 .btn-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
 
 /* ─── FORM ELEMENTS ─── */

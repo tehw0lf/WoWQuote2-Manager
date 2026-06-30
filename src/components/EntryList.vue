@@ -11,6 +11,7 @@
           {{ cat.en }}
         </option>
       </select>
+      <span v-if="!reorderable" class="muted reorder-hint">Clear sort on "ID" to enable drag reordering</span>
       <span class="count-label">{{ visible.length }} / {{ store.entries.length }} entries</span>
     </div>
 
@@ -18,16 +19,28 @@
       <table>
         <thead>
           <tr>
-            <th @click="setSort('id')">ID {{ sortIndicator('id') }}</th>
-            <th @click="setSort('msg')">Message {{ sortIndicator('msg') }}</th>
-            <th @click="setSort('file')">File {{ sortIndicator('file') }}</th>
-            <th @click="setSort('len')">Len {{ sortIndicator('len') }}</th>
-            <th @click="setSort('cat')">Cat {{ sortIndicator('cat') }}</th>
+            <th v-if="reorderable" class="drag-col"></th>
+            <th @click="setSortFromManual('id')">ID {{ sortIndicator('id') }}</th>
+            <th @click="setSortFromManual('msg')">Message {{ sortIndicator('msg') }}</th>
+            <th @click="setSortFromManual('file')">File {{ sortIndicator('file') }}</th>
+            <th @click="setSortFromManual('len')">Len {{ sortIndicator('len') }}</th>
+            <th @click="setSortFromManual('cat')">Cat {{ sortIndicator('cat') }}</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(e, visIdx) in visible" :key="e.id">
+          <tr
+            v-for="(e, visIdx) in visible"
+            :key="e.id"
+            :class="{ 'drag-over': dragOverId === e.id }"
+            :draggable="reorderable"
+            @dragstart="onDragStart(e)"
+            @dragover="onDragOver($event, e)"
+            @dragleave="onDragLeave(e)"
+            @drop="onDrop($event, e)"
+            @dragend="onDragEnd"
+          >
+            <td v-if="reorderable" class="drag-col" title="Drag to reorder">⠿</td>
             <td class="id-col">{{ e.id }}</td>
             <td>{{ e.msg }}</td>
             <td class="file-col">{{ e.file }}</td>
@@ -36,10 +49,17 @@
             <td class="actions">
               <button
                 class="btn small"
+                :class="{ playing: playing === e.file }"
                 :disabled="!store.mp3Blobs[e.file]"
                 :title="store.mp3Blobs[e.file] ? 'Play' : 'Not loaded'"
                 @click="play(e.file)"
               >▶</button>
+              <button
+                class="btn small"
+                :disabled="playing !== e.file"
+                title="Stop"
+                @click="stop()"
+              >■</button>
               <button class="btn small" @click="$emit('edit', store.entries.indexOf(e))">Edit</button>
               <button class="btn small danger" @click="deleteEntry(store.entries.indexOf(e))">Del</button>
             </td>
@@ -71,6 +91,13 @@ function sortIndicator(col) {
   return sortAsc.value ? '▲' : '▼';
 }
 
+const manualOrder = ref(true);
+
+function setSortFromManual(col) {
+  manualOrder.value = false;
+  setSort(col);
+}
+
 const visible = computed(() => {
   const q = search.value.toLowerCase();
   let list = store.entries.filter(e => {
@@ -78,15 +105,57 @@ const visible = computed(() => {
     if (q && !e.msg.toLowerCase().includes(q) && !e.id.toLowerCase().includes(q)) return false;
     return true;
   });
-  list = [...list].sort((a, b) => {
-    let va = a[sortCol.value], vb = b[sortCol.value];
-    if (typeof va === 'string') { va = va.toLowerCase(); vb = vb.toLowerCase(); }
-    if (va < vb) return sortAsc.value ? -1 : 1;
-    if (va > vb) return sortAsc.value ? 1 : -1;
-    return 0;
-  });
+  if (!manualOrder.value) {
+    list = [...list].sort((a, b) => {
+      let va = a[sortCol.value], vb = b[sortCol.value];
+      if (typeof va === 'string') { va = va.toLowerCase(); vb = vb.toLowerCase(); }
+      if (va < vb) return sortAsc.value ? -1 : 1;
+      if (va > vb) return sortAsc.value ? 1 : -1;
+      return 0;
+    });
+  }
   return list;
 });
+
+// Reordering only makes sense when the visible list isn't filtered/sorted away
+// from store.entries order, otherwise a drag would silently scramble the store.
+const reorderable = computed(() =>
+  manualOrder.value && !search.value && !catFilter.value
+);
+
+let dragEntry = null;
+const dragOverId = ref(null);
+
+function onDragStart(entry) {
+  dragEntry = entry;
+}
+
+function onDragOver(event, entry) {
+  if (!reorderable.value || !dragEntry) return;
+  event.preventDefault();
+  dragOverId.value = entry.id;
+}
+
+function onDragLeave(entry) {
+  if (dragOverId.value === entry.id) dragOverId.value = null;
+}
+
+function onDrop(event, targetEntry) {
+  event.preventDefault();
+  dragOverId.value = null;
+  if (!reorderable.value || !dragEntry || dragEntry === targetEntry) return;
+  const from = store.entries.indexOf(dragEntry);
+  const to = store.entries.indexOf(targetEntry);
+  if (from === -1 || to === -1) return;
+  store.entries.splice(from, 1);
+  store.entries.splice(to, 0, dragEntry);
+  store.setStatus('Entries reordered');
+}
+
+function onDragEnd() {
+  dragEntry = null;
+  dragOverId.value = null;
+}
 
 function deleteEntry(idx) {
   if (!confirm(`Delete entry "${store.entries[idx].id}"?`)) return;
@@ -96,17 +165,28 @@ function deleteEntry(idx) {
 
 let _audioCtx = null;
 let _currentSource = null;
+const playing = ref(null);
 
 async function play(filename) {
   const buf = store.mp3Blobs[filename];
   if (!buf) return;
   if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  if (_currentSource) { try { _currentSource.stop(); } catch {} }
+  stop();
   const decoded = await _audioCtx.decodeAudioData(buf.slice(0));
   const source = _audioCtx.createBufferSource();
   source.buffer = decoded;
   source.connect(_audioCtx.destination);
+  source.onended = () => {
+    if (_currentSource === source) { _currentSource = null; playing.value = null; }
+  };
   source.start();
   _currentSource = source;
+  playing.value = filename;
+}
+
+function stop() {
+  if (_currentSource) { try { _currentSource.stop(); } catch {} }
+  _currentSource = null;
+  playing.value = null;
 }
 </script>
