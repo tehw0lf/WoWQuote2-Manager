@@ -4,6 +4,7 @@
       <h2>Manage Categories</h2>
 
       <div class="cat-list">
+        <p v-if="!store.categories.length" class="muted">No categories yet — add one below.</p>
         <div v-for="(cat, i) in store.categories" :key="i" class="cat-item">
           <span class="cat-label">
             <strong>{{ i + 1 }}</strong>: {{ cat.en }}
