@@ -35,7 +35,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import JSZip from 'jszip';
 import { store } from './store.js';
 import { serializeMediaData, serializeMediaLua, patchLocalization } from './lib/serializeLua.js';
@@ -47,6 +47,13 @@ import CategoryModal from './components/CategoryModal.vue';
 
 const showCatModal = ref(false);
 const entryModal = reactive({ open: false, entry: null, idx: null, prefix: 'default' });
+
+onMounted(() => {
+  window.addEventListener('message', (e) => {
+    if (e.data?.type !== 'theme') return;
+    document.documentElement.classList.toggle('light', e.data.theme === 'light');
+  });
+});
 
 function openAdd() {
   entryModal.entry = null;

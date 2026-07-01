@@ -1,0 +1,89 @@
+# Security Monitoring Workflow
+#
+# This workflow performs security scanning using the shared reusable
+# workflows from tehw0lf/workflows.
+#
+# Schedule: Runs daily at 2:00 AM UTC to catch newly disclosed vulnerabilities
+# Manual Trigger: Can be triggered via GitHub Actions UI or gh CLI
+#
+# Security Checks:
+# - Source code scanning: Semgrep (OWASP Top 10, security-audit, CI), npm audit
+# - Artifact scanning: Trivy on the production build output
+#
+name: Security Monitoring
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - "src/**"
+      - ".github/workflows/security-scan.yml"
+  pull_request:
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - "src/**"
+      - ".github/workflows/security-scan.yml"
+  schedule:
+    # Run daily at 2:00 AM UTC
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    # Allow manual triggering
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  pull-requests: write
+
+jobs:
+  # Scan source code for security vulnerabilities
+  scan_source:
+    name: Scan Source Code
+    uses: tehw0lf/workflows/.github/workflows/security-scan-source.yml@main
+    permissions:
+      contents: write
+      security-events: write
+      actions: read
+      pull-requests: write
+    with:
+      tool: "npm"
+      semgrep_rules: "auto p/security-audit p/owasp-top-ten p/ci p/nodejs p/typescript"
+
+  # Build the app so the artifact scan has something to scan
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Upload build artifact for scanning
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: build
+          path: dist/
+          retention-days: 1
+
+  # Scan built artifacts for vulnerabilities
+  scan_artifacts:
+    name: Scan Artifacts
+    needs: build
+    uses: tehw0lf/workflows/.github/workflows/security-scan-artifacts.yml@main
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    with:
+      tool: "npm"
+      artifact_path: "dist"
