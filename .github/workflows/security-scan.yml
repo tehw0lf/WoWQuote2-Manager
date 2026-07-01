@@ -20,6 +20,12 @@ on:
       - "package-lock.json"
       - "src/**"
       - ".github/workflows/security-scan.yml"
+  pull_request:
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - "src/**"
+      - ".github/workflows/security-scan.yml"
   schedule:
     # Run daily at 2:00 AM UTC
     - cron: "0 2 * * *"
