@@ -47,9 +47,17 @@ export function parseLua(src) {
   return result;
 }
 
+const FIELD_PATTERNS = {
+  id: /id\s*=\s*"([^"]*)"/,
+  file: /file\s*=\s*"([^"]*)"/,
+  msg: /msg\s*=\s*"([^"]*)"/,
+  len: /len\s*=\s*([\d.]+)/,
+  cat: /cat\s*=\s*([\d.]+)/,
+};
+
 function parseEntry(block) {
-  const str = (key) => { const m = block.match(new RegExp(key + '\\s*=\\s*"([^"]*)"')); return m ? m[1] : null; };
-  const num = (key) => { const m = block.match(new RegExp(key + '\\s*=\\s*([\\d.]+)')); return m ? parseFloat(m[1]) : 0; };
+  const str = (key) => { const m = block.match(FIELD_PATTERNS[key]); return m ? m[1] : null; };
+  const num = (key) => { const m = block.match(FIELD_PATTERNS[key]); return m ? parseFloat(m[1]) : 0; };
   const id = str('id');
   const file = str('file');
   if (!id || !file) return null;
