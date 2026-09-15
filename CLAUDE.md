@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Browser-based manager for the [WoWQuote2](https://github.com/tehw0lf/WoWQuote2) WoW addon. Replaces the Python `insert_and_build.py` build script. Users load their `media_data.lua`, manage sound entries and categories, upload new MP3s, and export incremental update ZIPs (only new MP3s + patched Lua files).
+Browser-based manager for the [WoWQuote2](https://github.com/tehw0lf/WoWQuote2) WoW addon. Replaces the Python `insert_and_build.py` build script. Users drop in MP3s, manage sound entries and categories, and export incremental update ZIPs (new MP3s + patched Lua files). Loading an existing `media_data.lua` is optional — it resumes a previous collection rather than being a prerequisite, since `handleMp3Files` creates entries and categories from scratch.
 
 ## Commands
 
@@ -22,8 +22,8 @@ Single-page Vue 3 app (Composition API, `<script setup>`), no router. All state 
 
 ### Data flow
 
-1. **Load**: User drops `media_data.lua` (and optionally `Localization.*.lua` or a ZIP) into the Sidebar drop zone. `parseLua.js` extracts `WQmedia_data` (entries) and `WQcategories_data` (categories) into the store.
-2. **Edit**: `EntryList` → `EntryModal` for add/edit. `CategoryModal` for category CRUD. New MP3 uploads go into `store.mp3Blobs` (filename → ArrayBuffer); Web Audio API auto-detects duration.
+1. **Load** (optional): User drops `media_data.lua` (and optionally `Localization.*.lua` or a ZIP) into the Sidebar drop zone. `parseLua.js` extracts `WQmedia_data` (entries) and `WQcategories_data` (categories) into the store. `loadZip()` reads only `media_data.lua` and known `Localization.*.lua` entries out of a ZIP — MP3s inside it are ignored.
+2. **Edit**: `EntryList` → `EntryModal` for add/edit. `CategoryModal` for category CRUD. Dropped MP3s go into `store.mp3Blobs` (filename → ArrayBuffer); Web Audio API auto-detects duration. `handleMp3Files()` also creates the entries themselves — `nextIdForPrefix()` assigns ids and `resolveCategory()` appends any category the filename prefix implies, so an empty store is a valid starting point.
 3. **Export**: `App.vue::exportZip(variant)` builds a JSZip in-browser:
    - `Media.lua` generated from `store.entries` via `serializeMediaLua()`
    - Each `Localization.*.lua`: taken from `store.localizationSources` if the user uploaded it, otherwise fetched from `https://raw.githubusercontent.com/tehw0lf/WoWQuote2/main/WoWQuote2/`. The `WQcategories` block is then replaced via `patchLocalization()`.
