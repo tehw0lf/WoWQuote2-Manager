@@ -52,6 +52,8 @@ jobs:
     with:
       tool: "npm"
       semgrep_rules: "auto p/security-audit p/owasp-top-ten p/ci p/nodejs p/typescript"
+      # Dev dependencies (vite, the Vue plugin) are not part of what is shipped.
+      npm_audit_omit_dev: true
 
   # Build the app so the artifact scan has something to scan
   build:

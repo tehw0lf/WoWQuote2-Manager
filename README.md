@@ -16,6 +16,7 @@ Drop in MP3s, manage sound entries and categories, and export an incremental upd
 - Drag & drop reordering of entries (determines order in the generated `Media.lua`)
 - Search and filter entries by message, ID, or category
 - Export an incremental update ZIP per game version (TBC / Vanilla / WOTLK) containing only new MP3s and patched Lua files
+- Export a sound pack for the WoW: Forever WoWQuote2 AddOn ("Forever"): a `QuoteMediaWQ2` folder with your data and new MP3s
 - Save `media_data.lua` at any time for round-tripping
 
 ## Usage
@@ -26,6 +27,8 @@ You do not need to load anything first. Dropping MP3s into an empty Manager is e
 2. Drop your MP3 files into the sidebar. Adjust messages, categories and entry order as needed.
 3. Export an update ZIP for your target game version and extract it over the `WoWQuote2` folder in your addon directory.
 4. Restart the game — WoW reads addon files only at startup.
+
+**WoW: Forever** uses a different WoWQuote2 AddOn that loads sounds from separate packs. Install that AddOn first, then use the **Forever** export and extract the ZIP into `Interface\AddOns` so that a `QuoteMediaWQ2` folder exists. Forever players and players on the other clients cannot hear each other's quotes.
 
 ### Resuming an existing collection
 

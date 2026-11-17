@@ -38,8 +38,8 @@
 import { ref, reactive, onMounted } from 'vue';
 import JSZip from 'jszip';
 import { store } from './store.js';
-import { serializeMediaData, serializeMediaLua, patchLocalization } from './lib/serializeLua.js';
-import { LOCALIZATION_FILES, LOCALE_FOR_FILE } from './lib/addonFiles.js';
+import { serializeMediaData, serializeMediaLua, serializePackData, patchLocalization } from './lib/serializeLua.js';
+import { LOCALIZATION_FILES, LOCALE_FOR_FILE, FOREVER_DIR, FOREVER_FILES } from './lib/addonFiles.js';
 import Sidebar from './components/Sidebar.vue';
 import EntryList from './components/EntryList.vue';
 import EntryModal from './components/EntryModal.vue';
@@ -76,6 +76,7 @@ function saveMediaData() {
 }
 
 const GITHUB_RAW = 'https://raw.githubusercontent.com/tehw0lf/WoWQuote2/main/WoWQuote2/';
+const GITHUB_RAW_FOREVER = 'https://raw.githubusercontent.com/tehw0lf/WoWQuote2/main/Forever/';
 
 async function resolveLocalization(filename) {
   if (store.localizationSources[filename]) return store.localizationSources[filename];
@@ -84,24 +85,41 @@ async function resolveLocalization(filename) {
   return res.text();
 }
 
+// WoW: Forever runs a different WoWQuote2 core that loads sounds from QuoteMedia
+// packs, so its export is a pack folder instead of a patched WoWQuote2 folder.
+async function addForeverFiles(zip) {
+  for (const filename of FOREVER_FILES) {
+    store.setStatus(`Resolving ${filename}…`);
+    const res = await fetch(GITHUB_RAW_FOREVER + filename);
+    if (!res.ok) throw new Error(`Failed to fetch ${filename} from GitHub: ${res.status}`);
+    zip.file(`${FOREVER_DIR}/${filename}`, await res.text());
+  }
+  zip.file(`${FOREVER_DIR}/Media.lua`, serializePackData(store.entries, store.categories));
+}
+
 async function exportZip(variant) {
   if (!store.entries.length) { store.setStatus('No entries to export', true); return; }
 
   try {
     store.setStatus('Building ZIP…');
     const zip = new JSZip();
+    const folder = variant === 'Forever' ? FOREVER_DIR : 'WoWQuote2';
 
-    zip.file('WoWQuote2/Media.lua', serializeMediaLua(store.entries));
+    if (variant === 'Forever') {
+      await addForeverFiles(zip);
+    } else {
+      zip.file('WoWQuote2/Media.lua', serializeMediaLua(store.entries));
 
-    for (const filename of LOCALIZATION_FILES) {
-      store.setStatus(`Resolving ${filename}…`);
-      const src = await resolveLocalization(filename);
-      const lang = LOCALE_FOR_FILE[filename];
-      zip.file(`WoWQuote2/${filename}`, patchLocalization(src, lang, store.categories));
+      for (const filename of LOCALIZATION_FILES) {
+        store.setStatus(`Resolving ${filename}…`);
+        const src = await resolveLocalization(filename);
+        const lang = LOCALE_FOR_FILE[filename];
+        zip.file(`WoWQuote2/${filename}`, patchLocalization(src, lang, store.categories));
+      }
     }
 
     for (const [filename, arraybuf] of Object.entries(store.mp3Blobs)) {
-      zip.file(`WoWQuote2/media/${filename}`, arraybuf);
+      zip.file(`${folder}/media/${filename}`, arraybuf);
     }
 
     const today = new Date().toISOString().slice(0, 10);

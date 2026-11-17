@@ -45,6 +45,7 @@
         <button class="btn primary" @click="$emit('export', 'TBC')">TBC</button>
         <button class="btn primary" @click="$emit('export', 'Vanilla')">Vanilla</button>
         <button class="btn primary" @click="$emit('export', 'WOTLK')">WotLK</button>
+        <button class="btn primary" @click="$emit('export', 'Forever')" title="Sound pack for the WoW: Forever WoWQuote2 AddOn">Forever</button>
       </div>
       <button class="btn" style="margin-top:8px; width:100%" @click="$emit('save-media-data')">
         Save media_data.lua
