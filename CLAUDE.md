@@ -28,7 +28,8 @@ Single-page Vue 3 app (Composition API, `<script setup>`), no router. All state 
    - `Media.lua` generated from `store.entries` via `serializeMediaLua()`
    - Each `Localization.*.lua`: taken from `store.localizationSources` if the user uploaded it, otherwise fetched from `https://raw.githubusercontent.com/tehw0lf/WoWQuote2/main/WoWQuote2/`. The `WQcategories` block is then replaced via `patchLocalization()`.
    - New MP3s from `store.mp3Blobs` added under `WoWQuote2/media/`.
-   - Result downloaded as `WQ2-<variant>-<date>.zip` (variants: TBC / Vanilla / WOTLK).
+   - Result downloaded as `WQ2-<variant>-<date>.zip` (variants: TBC / Vanilla / WOTLK / Forever).
+   - **Forever** is a different layout: a `QuoteMediaWQ2/` pack for the Forever WoWQuote2 core. `QuoteMediaWQ2.toc`, `Pack.lua` and `Readme.txt` are fetched from `.../WoWQuote2/main/Forever/`; `Media.lua` is `serializePackData()` (`ns.categories` with all languages, `ns.media`); MP3s go under `QuoteMediaWQ2/media/`. No Localization files are patched.
 4. **Save**: `media_data.lua` can be saved at any time via `serializeMediaData()` for round-tripping.
 
 ### Key files
@@ -37,8 +38,8 @@ Single-page Vue 3 app (Composition API, `<script setup>`), no router. All state 
 |---|---|
 | `src/store.js` | Reactive state: `entries`, `categories`, `mp3Blobs`, `localizationSources`, `status` |
 | `src/lib/parseLua.js` | Parses `media_data.lua` — stack-based brace matching for entries, regex for categories |
-| `src/lib/serializeLua.js` | `serializeMediaLua()`, `serializeMediaData()`, `patchLocalization()` |
-| `src/lib/addonFiles.js` | `LOCALIZATION_FILES` list and `LOCALE_FOR_FILE` map |
+| `src/lib/serializeLua.js` | `serializeMediaLua()`, `serializePackData()`, `serializeMediaData()`, `patchLocalization()` |
+| `src/lib/addonFiles.js` | `LOCALIZATION_FILES`, `LOCALE_FOR_FILE`, `FOREVER_DIR`, `FOREVER_FILES` |
 | `src/components/Sidebar.vue` | File loading (`.lua`, `.zip`, multiple files), MP3 batch drop with prefix/category auto-detection |
 | `src/App.vue` | Export logic, modal orchestration |
 

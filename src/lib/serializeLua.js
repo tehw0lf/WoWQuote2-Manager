@@ -66,6 +66,22 @@ export function serializeMediaLua(entries) {
   return out;
 }
 
+// Data file of the WoW: Forever sound pack (QuoteMediaWQ2). Only data: the
+// loader (Pack.lua, fetched from the WoWQuote2 repo) turns it into core modules.
+export function serializePackData(entries, categories) {
+  let out = 'local _, ns = ...\n\nns.categories = {\n';
+  for (const cat of categories) {
+    const parts = LOCALES.filter(l => cat[l]).map(l => `${l} = "${esc(cat[l])}"`);
+    out += `    { ${parts.join(', ')} },\n`;
+  }
+  out += '}\n\nns.media = {\n';
+  for (const e of entries) {
+    out += `{   id = "${esc(e.id)}",\n    file = "${esc(e.file)}",\n    len = ${e.len},\n    msg = "${esc(e.msg)}",\n    cat = ${e.cat}\n},\n`;
+  }
+  out += '}\n';
+  return out;
+}
+
 // Patch an existing Localization.*.lua — replace only the WQcategories block.
 export function patchLocalization(source, lang, categories) {
   const catLines = categories.map(cat => `    "${esc(cat[lang] || cat.en || '')}",`).join('\n');
